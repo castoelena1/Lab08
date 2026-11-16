@@ -1,3 +1,5 @@
+import copy
+
 from database.distributore_DAO import DistributoreDAO
 
 '''
@@ -26,6 +28,19 @@ class Model:
         :return: lista di tuple --> (nome del distributore, media), es. (Distributore A, 1.789)
         """
         # TODO
+        result = []
+        for distributore in self._distributori:
+            prezzo = distributore.get_prezzi()
+
+            prezzi_mese = [p.prezzo_litro for p in prezzo if p.data.month == mese]
+
+            if not prezzi_mese:
+                media = 0
+            else:
+                media = sum(prezzi_mese) / len(prezzi_mese)
+            result.append((distributore.nome, media))
+
+        return result
 
     def get_sequenza_ottima(self, mese:int):
         """
@@ -47,6 +62,23 @@ class Model:
     def __ricorsione(self, sequenza_parziale, giorno, ultimo_distributore, costo_corrente, prezzi_settimana):
         """ Implementa la ricorsione """
         # TODO
+        if giorno > 7:
+            if self.__costo_ottimo == -1 or costo_corrente < self.__costo_ottimo:
+                self.__costo_ottimo = costo_corrente
+                self.__sequenza_ottima = copy.deepcopy(sequenza_parziale)
+
+        else:
+            for distributore_id, prezzi in prezzi_settimana.items():
+                prezzi_giorno = prezzi[giorno - 1]
+                costo = costo_corrente + (prezzi_giorno * 100)
+
+                if ultimo_distributore is not None and ultimo_distributore != distributore_id:
+                    costo += 5
+
+                nuova_sequenza = copy.deepcopy(sequenza_parziale)
+                nuova_sequenza.append(distributore_id)
+
+                self.__ricorsione(nuova_sequenza, giorno + 1, distributore_id, costo, prezzi_settimana)
 
     def __get_prezzi_prima_settimana_mese(self, mese: int):
         """
@@ -54,3 +86,18 @@ class Model:
         :return: un dizionario: {id_distributore: [prezzo_giorno1, ..., prezzo_giorno7]}
         """
         # TODO
+        prezzi_mese = {}
+
+        for distributore in self._distributori:
+            prezzi = distributore.get_prezzi()
+
+            prezzi_giornalieri = {p.data.day: p.prezzo_litro for p in prezzi if p.data.month == mese and 1 <= p.data.day <= 7}
+
+            prezzo_litro_giorni = []
+
+            for giorno in range(1,8):
+                prezzo_litro_giorni.append(prezzi_giornalieri.get(giorno, 0))
+
+            prezzi_mese[distributore.id] = prezzo_litro_giorni
+
+        return prezzi_mese
